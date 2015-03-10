@@ -111,6 +111,8 @@ class AddressPlusMinusMarlin(Address):
             writer.write(writer.SPACE())
         Address.write(self, writer)
         self.str2 = None
+	writer.write("\n")
+	writer.write("G4 S3")
 
 
 class Creator(iso.Creator):
@@ -136,7 +138,6 @@ class Creator(iso.Creator):
     def SPINDLE_CCW(self): return('M4')
 
     def write_spindle(self):
-#        self.write('\n')
         self.write(self.SPACE())
         self.s.write(self)
 
@@ -276,7 +277,7 @@ class Creator(iso.Creator):
 #            return ' '
 
     def PROGRAM(self): return None
-    def PROGRAM_END(self): return('M05')
+    def PROGRAM_END(self): return('G4 S5\nM05')
 
         
 ############################################################################
