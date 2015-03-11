@@ -63,17 +63,22 @@ class Format:
             
         return s
 
-class Address:
+class AddressMarlin:
     def __init__(self, text, fmt = Format(), modal = True):
         self.text = text
         self.fmt = fmt
         self.modal = modal
         self.str = None
         self.previous = None
+        self.number = 0
         
     def set(self, number):
         self.str = self.text + self.fmt.string(number)
-        
+        self.number = number
+
+    def get(self):
+        return self.number
+
     def write(self, writer):
         if self.str == None: return ''
         if self.modal:
@@ -84,14 +89,14 @@ class Address:
             writer.write(self.str)
         self.str = None
 
-class AddressPlusMinusMarlin(Address):
+class AddressPlusMinusMarlin(AddressMarlin):
     def __init__(self, text, fmt = Format(), modal = True):
-        Address.__init__(self, text, fmt, modal)
+        AddressMarlin.__init__(self, text, fmt, modal)
         self.str2 = None
         self.previous2 = None
         
     def set(self, number, text_plus, text_minus):
-        Address.set(self, number)
+        AddressMarlin.set(self, number)
         if float(number) > 0.0:
             self.str2 = text_plus
         else:
@@ -109,7 +114,7 @@ class AddressPlusMinusMarlin(Address):
 	    writer.write("\n")
             writer.write(self.str2 + writer.SPACE())
             writer.write(writer.SPACE())
-        Address.write(self, writer)
+        AddressMarlin.write(self, writer)
         self.str2 = None
 	writer.write("\n")
 	writer.write("G4 S3")
@@ -124,6 +129,8 @@ class Creator(iso.Creator):
         #self.output_g43_on_tool_change_line = True
         self.drillExpanded = True
 	self.s = AddressPlusMinusMarlin('S', fmt = Format(number_of_decimal_places = 2), modal = False)
+	self.f = AddressMarlin('F', fmt = Format(number_of_decimal_places = 2))
+	self.rapidsFeedRate = 2000
 
     def SPACE_STR(self): return ' '
 
@@ -199,6 +206,12 @@ class Creator(iso.Creator):
                 dc = c - self.c
                 self.write(self.SPACE() + self.C() + (self.fmt.string(dc)))
             self.c = c
+
+	number = self.f.get()
+	self.f.set(self.rapidsFeedRate)
+        self.write_feedrate()
+	self.f.set(number)
+
         self.write_misc()
         self.write_spindle()
         self.write('\n')
