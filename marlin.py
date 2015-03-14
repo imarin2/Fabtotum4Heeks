@@ -89,6 +89,30 @@ class AddressMarlin:
             writer.write(self.str)
         self.str = None
 
+class AddressPlane:
+    def __init__(self, text, fmt = Format(), modal = True):
+        self.text = text
+        self.fmt = fmt
+        self.modal = modal
+        self.str = None
+        self.previous = None
+        
+    def set(self, number):
+        self.str = self.text + self.fmt.string(number)
+        
+    def write(self, writer):
+        if self.str == None: return ''
+        if self.modal:
+            if self.str != self.previous:
+                writer.write(self.str)
+                self.previous = self.str
+	        writer.write("\n")       
+        else:
+            writer.write(self.str)
+	    writer.write("\n")
+        self.str = None
+
+
 class AddressPlusMinusMarlin(AddressMarlin):
     def __init__(self, text, fmt = Format(), modal = True):
         AddressMarlin.__init__(self, text, fmt, modal)
@@ -130,7 +154,10 @@ class Creator(iso.Creator):
         self.drillExpanded = True
 	self.s = AddressPlusMinusMarlin('S', fmt = Format(number_of_decimal_places = 2), modal = False)
 	self.f = AddressMarlin('F', fmt = Format(number_of_decimal_places = 2))
+	self.g_plane = AddressPlane('G', fmt = Format(number_of_decimal_places = 0))
 	self.rapidsFeedRate = 2000
+	self.inFeedOrRapid = False
+	self.onFirstRapid = True
 
     def SPACE_STR(self): return ' '
 
@@ -148,9 +175,32 @@ class Creator(iso.Creator):
         self.write(self.SPACE())
         self.s.write(self)
 
+    def write_preps(self):
+        if self.g_plane.str:
+            self.write(self.SPACE())
+        self.g_plane.write(self)
+        for g in self.g_list:
+            self.write(self.SPACE() + g)
+            if self.inFeedOrRapid == True:
+		self.write("\n")
+        self.g_list = []
+
     def rapid(self, x=None, y=None, z=None, a=None, b=None, c=None ):
         if self.same_xyz(x, y, z, a, b, c): return
         self.on_move()
+	self.inFeedOrRapid = True
+        self.write_preps()
+        self.inFeedOrRapid = False
+
+	if self.onFirstRapid:
+		# This should not be hardcoded, the SAFETY value should be retrieved
+		self.write(self.RAPID()+ " " + self.Z() + "40 ")
+		number = self.f.get()
+		self.f.set(self.rapidsFeedRate)
+        	self.write_feedrate()
+		self.f.set(number)
+		self.write("\n")
+		self.onFirstRapid=False
 
         if self.g0123_modal:
             if self.prev_g0123 != self.RAPID():
@@ -158,7 +208,6 @@ class Creator(iso.Creator):
                 self.prev_g0123 = self.RAPID()
         else:
             self.write(self.SPACE() + self.RAPID())
-        self.write_preps()
         if (x != None):
             if (self.absolute_flag ):
                 self.write(self.SPACE() + self.X() + (self.fmt.string(x + self.shift_x)))
@@ -219,13 +268,15 @@ class Creator(iso.Creator):
     def feed(self, x=None, y=None, z=None, a=None, b=None, c=None):
         if self.same_xyz(x, y, z, a, b, c): return
         self.on_move()
+        self.inFeedOrRapid = True
+        self.write_preps()
+        self.inFeedOrRapid = False
         if self.g0123_modal:
             if self.prev_g0123 != self.FEED():
                 self.write(self.SPACE() + self.FEED())
                 self.prev_g0123 = self.FEED()
         else:
             self.write(self.SPACE() + self.FEED())
-        self.write_preps()
         dx = dy = dz = 0
         if (x != None):
             dx = x - self.x
@@ -298,6 +349,7 @@ class Creator(iso.Creator):
 
     def program_begin(self, id, comment):
         self.write( ('(Created with Marlin post processor ' + str(now.strftime("%Y/%m/%d %H:%M")) + ')' + '\n') )
+#	self.write('G0 Z40 F2000\n')
         iso.Creator.program_begin(self, id, comment)
 
 nc.creator = Creator()

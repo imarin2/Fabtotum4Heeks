@@ -3,3 +3,4 @@
 <Machine post="siegkx1" reader="iso_read" suffix=".tap" description="Mach3 Machine Controller"/>
 <Machine post="grbl" reader="iso_read" suffix=".ngc" description="GRBL"/>
 <Machine post="marlin" reader="iso_read" suffix=".gcode" description="Marlin"/>
+<Machine post="iso" reader="iso_read" suffix=".gcode" description="Iso"/>
